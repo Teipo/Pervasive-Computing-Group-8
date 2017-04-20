@@ -1,14 +1,14 @@
 import pycom
 import time
-import network
+#import network
 import binascii
 import socket
 
 from network import LoRa
 
-wlan = network.WLAN()
-print(wlan.ssid())
-print(wlan.mode)
+#wlan = network.WLAN()
+#print(wlan.ssid())
+#print(wlan.mode)
 
 # Colors
 off = 0x000000
@@ -44,9 +44,15 @@ def tock():
     return;
 
 def sos( ):
-    tick().tick().tick()
-    tock().tock().tock()
-    tick().tick().tick()
+    tick()
+    tick()
+    tick()
+    tock()
+    tock()
+    tock()
+    tick()
+    tick()
+    tick()
     time.sleep(2)           #sleep
     return;
 
@@ -91,14 +97,10 @@ def measureLight():
     i2c.writeto(0x20, '\x03')
     time.sleep(1.5)
     return (unpack('<H', i2c.readfrom_mem(0x20, 4, 2))[0]  >> 8) + ((unpack('<H', i2c.readfrom_mem(0x20, 4, 2))[0]  & 0xFF) << 8) 
-    
-
 
 s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
 s.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
 s.setblocking(True)
-
-i = 0
 
 # https://github.com/ITU-PerCom-2017/resources/blob/master/assignment01/backend/README.md
 light_bytes = bytearray(3)
@@ -110,31 +112,38 @@ temperature_bytes[0] = 0xAA   #   ID of the temperature
 moisture_bytes = bytearray(3)
 moisture_bytes[0] = 0xBB   #   ID of the moisture
 
+temperature = measureTemperature()
+moisture = measureMoisture()
+light = measureLight()
+
 while True:
     temperature = measureTemperature()
     moisture = measureMoisture()
     light = measureLight()
-    print("Temperature: " + str(temperature/10) + "   Light: " + str(light) + "  Moisture: " + str(moisture)) 
 
-    light_bytes[1] = (light() & 0xFF00) >> 8
-    light_bytes[2] = (light() & 0x00FF)
+
+    light_bytes[1] = (light & 0xFF00) >> 8
+    light_bytes[2] = (light & 0x00FF)
     
-    moisture_bytes[1] = (moisture() & 0xFF00) >> 8
-    moisture_bytes[2] = (moisture() & 0x00FF)
+    moisture_bytes[1] = (moisture & 0xFF00) >> 8
+    moisture_bytes[2] = (moisture & 0x00FF)
     
     temperature_bytes[1] = (temperature & 0xFF00) >> 8
     temperature_bytes[2] = (temperature & 0x00FF)
     
-    count = s.send(light_bytes)
-    print('Sent %s light_bytes' % count)
+    light_count = s.send(light_bytes)
+    temperature_count = s.send(temperature_bytes)
+    moisture_count = s.send(moisture_bytes)
+    
+   # print('Sent %s light_bytes' % light_count)
+    #print("Temperature: " + str(temperature/10) + "   Light: " + str(light) + "  Moisture: " + str(moisture)) 
+        
     pycom.rgbled(green)
-    time.sleep(0.1)
+    time.sleep(0.3)
     pycom.rgbled(blue)
-    if temperature > 250 :
-        ok()
-        ok()
-    else :
-        sos()
-        sos()
-    i += 1
+    time.sleep(0.3)
+    pycom.rgbled(green)
+    time.sleep(0.3)
+    pycom.rgbled(off)
+    time.sleep(10)
 
